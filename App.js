@@ -1,12 +1,22 @@
+import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
+import Layout from './screens/Layout';
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    "Poppins-Bold": require("./assets/fonts/Poppins-Bold.ttf"),
+    "Poppins-Medium": require("./assets/fonts/Poppins-Medium.ttf"),
+    "Poppins-Regular": require("./assets/fonts/Poppins-Regular.ttf"),
+    "Poppins-SemiBold": require("./assets/fonts/Poppins-SemiBold.ttf"),
+  })
+
+  if (!fontsLoaded)
+    return null;
+
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <Layout />
   );
 }
 
