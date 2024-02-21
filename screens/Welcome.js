@@ -122,7 +122,7 @@ export default function Welcome({ navigation }) {
                                         marginVertical: 20
 
                                     }}
-                                    onPress={() => navigation.navigate("Index")}
+                                    onPress={() => navigation.navigate("HomeScreen")}
                                 >
                                     <Text style={{
                                         fontFamily: "Poppins-Medium",
