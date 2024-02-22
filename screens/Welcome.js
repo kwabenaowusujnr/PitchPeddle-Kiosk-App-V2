@@ -1,15 +1,61 @@
-import { Dimensions, Image, ImageBackground, StyleSheet, Text, View, Platform, TouchableOpacity, TextInput, Pressable, ScrollView } from "react-native";
+import { Dimensions, Image, ImageBackground, StyleSheet, Text, View, Platform, TouchableOpacity, TextInput, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView } from "react-native";
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import LottieView from "lottie-react-native";
+import axios from "axios";
+import { useAppBase } from "../providers/AppBaseContext";
 
 
 export default function Welcome({ navigation }) {
+    const { isAuthenticated, setIsAuthenticated, currentEvent, setCurrentEvent } = useAppBase();
     const [isPasaswordShow, setIsPasswordShow] = useState(false)
+    const [eventCode, setEventCode] = useState('');
+    const [isLoading, setIsLoading] = useState(false); // State for loading indicator
+
+    const AuthCode = async () => {
+        setIsLoading(true);
+        console.log(eventCode)
+        try {
+            const response = await axios.post('https://ppevent.azurewebsites.net/api/geteventbycode', {
+                eventcode: eventCode
+            });
+
+            if (response.message != "") {
+                setIsAuthenticated(true);
+                setCurrentEvent(response.data);
+                navigation.navigate('HomeScreen');
+            }
+
+            console.log('Response:', response.data);
+        } catch (error) {
+            console.log('Error:', error);
+        } finally {
+            setIsLoading(false); // Set loading to false regardless of success or failure
+        }
+    }
+
+
 
     return (
+
         <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} >
+            {isLoading &&
+                <ActivityIndicator
+                    style={{
+                        flex: 1,
+                        marginTop: 10,
+                        position: "absolute",
+                        elevation: 0,
+                        backgroundColor: "#fff",
+                        opacity: 0.4,
+                        width: "100%",
+                        height: "100%",
+                        zIndex: 100
+                    }}
+                    size="large"
+                    color="#007A88" />}
+
             <View style={{ flex: 1, backgroundColor: "#fff" }}>
                 <View style={{ width: '100%', flexDirection: "row" }}>
                     {/* <Image
@@ -18,16 +64,26 @@ export default function Welcome({ navigation }) {
                         resizeMode="stretch">
 
                     </Image> */}
-
-                    <LottieView
-                        autoPlay={true}
-                        loop={true}
+                    <View
                         style={{
-                            width: Dimensions.get('window').width * 0.5,
-                            height: Dimensions.get('window').height,
-                            backgroundColor: '#F9FEFF'
+                            width: "50%",
+                            height: "100%",
+                            backgroundColor: '#F9FEFF',
+                            justifyContent: "center",
+                            alignItems: "center"
                         }}
-                        source={require('../assets/intro.json')} />
+                    >
+                        <LottieView
+                            autoPlay={true}
+                            loop={true}
+                            style={{
+                                width: "80%",
+                                height: "80%",
+                                backgroundColor: '#F9FEFF'
+                            }}
+                            source={require('../assets/intro.json')} />
+                    </View>
+
 
                     <View style={{ width: "50%", padding: 20, height: Dimensions.get('window').height }}>
                         <ScrollView>
@@ -39,33 +95,6 @@ export default function Welcome({ navigation }) {
                             ></Image>
 
                             <Text style={{ fontSize: 14, fontFamily: "Poppins-SemiBold", color: "#007A88", alignSelf: "center" }}>Event Kiok</Text>
-
-                            {/* <View style={styles.container}>
-
-                            <TimeDateScreen />
-
-                            <View style={{ flexDirection: "row", justifyContent: "space-around", width: "100%" }}>
-
-                                <LinearGradient
-                                    colors={['#1F9CD6', '#067FC4', '#045FA6']}
-                                    style={{
-                                        width: 100, height: 100, justifyContent: "center", alignItems: "center", borderRadius: 10
-                                    }}>
-                                    <AntDesign name="login" size={30} color="#fff" />
-                                    <Text style={{ color: "#fff", fontFamily: "Poppins-SemiBold" }}>Check-In</Text>
-                                </LinearGradient>
-
-                                <LinearGradient
-                                    colors={['#1F9CD6', '#067FC4', '#045FA6']}
-                                    style={{
-                                        width: 100, height: 100, justifyContent: "center", alignItems: "center", borderRadius: 10
-                                    }}>
-                                    <AntDesign name="logout" size={30} color="#fff" />
-                                    <Text style={{ color: "#fff", fontFamily: "Poppins-SemiBold" }}>Check-Out</Text>
-                                </LinearGradient>
-                            </View>
-
-                        </View> */}
 
                             <View
                                 style={{
@@ -95,6 +124,9 @@ export default function Welcome({ navigation }) {
                                         style={styles.textField}
                                         placeholder="Event Code"
                                         secureTextEntry={isPasaswordShow}
+                                        autoCapitalize="characters"
+                                        onChangeText={text => setEventCode(text)}
+                                        value={eventCode}
                                     />
                                     <TouchableOpacity
                                         style={{ position: "absolute", right: 12 }}
@@ -122,7 +154,7 @@ export default function Welcome({ navigation }) {
                                         marginVertical: 20
 
                                     }}
-                                    onPress={() => navigation.navigate("HomeScreen")}
+                                    onPress={AuthCode}
                                 >
                                     <Text style={{
                                         fontFamily: "Poppins-Medium",
@@ -132,6 +164,9 @@ export default function Welcome({ navigation }) {
                                         Login
                                     </Text>
                                 </TouchableOpacity>
+
+
+
                             </View>
                         </ScrollView>
 
@@ -140,6 +175,7 @@ export default function Welcome({ navigation }) {
 
 
             </View>
+
         </SafeAreaView>
     );
 }
@@ -147,7 +183,7 @@ export default function Welcome({ navigation }) {
 const styles = StyleSheet.create({
     leftBanner: {
         width: "50%",
-        height: Dimensions.get('window').height,
+        height: "100%"
     },
     textFieldWrapper: {
         width: "100%",
