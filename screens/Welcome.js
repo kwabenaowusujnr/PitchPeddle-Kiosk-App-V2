@@ -5,6 +5,7 @@ import { AntDesign, Ionicons } from "@expo/vector-icons";
 import LottieView from "lottie-react-native";
 import axios from "axios";
 import { useAppBase } from "../providers/AppBaseContext";
+import Toast from "react-native-root-toast";
 
 
 export default function Welcome({ navigation }) {
@@ -12,19 +13,25 @@ export default function Welcome({ navigation }) {
     const [isPasaswordShow, setIsPasswordShow] = useState(false)
     const [eventCode, setEventCode] = useState('');
     const [isLoading, setIsLoading] = useState(false); // State for loading indicator
+    const [showToast, setShowToast] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const AuthCode = async () => {
         setIsLoading(true);
-        console.log(eventCode)
+
         try {
             const response = await axios.post('https://ppevent.azurewebsites.net/api/geteventbycode', {
                 eventcode: eventCode
             });
 
-            if (response.message != "") {
+            if (response.data.event != null) {
                 setIsAuthenticated(true);
-                setCurrentEvent(response.data);
+                setCurrentEvent(response.data.event);
+                setShowToast(false)
                 navigation.navigate('HomeScreen');
+            } else {
+                setShowToast(true)
+                setErrorMessage(response.data.message);
             }
 
             console.log('Response:', response.data);
@@ -165,7 +172,13 @@ export default function Welcome({ navigation }) {
                                     </Text>
                                 </TouchableOpacity>
 
-
+                                <Toast
+                                    visible={showToast}
+                                    position={50}
+                                    shadow={false}
+                                    animation={false}
+                                    hideOnPress={false}
+                                >{errorMessage}</Toast>
 
                             </View>
                         </ScrollView>

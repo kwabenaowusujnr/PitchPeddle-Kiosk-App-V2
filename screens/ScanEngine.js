@@ -1,5 +1,5 @@
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import React, { useEffect, useState } from 'react'
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import React, { useEffect, useRef, useState } from 'react'
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,6 +9,8 @@ import Toggle from "react-native-toggle-element";
 import { AntDesign, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useAppBase } from '../providers/AppBaseContext';
 import Scanner from '../components/Scanner.';
+import PhoneNumberValidator from '../components/PhoneNumberValidator';
+import axios from 'axios';
 
 export default function ScanEngine({ route, navigation }) {
     const { isAuthenticated, setIsAuthenticated, currentEvent, setCurrentEvent } = useAppBase();
@@ -20,7 +22,27 @@ export default function ScanEngine({ route, navigation }) {
     const [noFoundEvent, setNoFoundEvent] = useState(false);
     const [isScanning, seIsScanning] = useState(true);
     const [toggleValue, setToggleValue] = useState(false);
-    const [eventCode, setEventCode] = useState();
+    const [eventCode, setEventCode] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [attendantName, setAttendantName] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [scanResults, setScanResults] = useState('');
+    const [scanCodeesults, setScanCodeResults] = useState(0);
+
+    const statusLottie = useRef(null);
+
+    const _sourceLoad = () => {
+        switch (scanCodeesults) {
+            case 0:
+                return require('../assets/confirmation.json');
+            case 1:
+                return require('../assets/warning.json');
+            case 2:
+                return require('../assets/error.json');
+            case 4:
+                return require('../assets/serverError.json');
+        }
+    }
 
     useEffect(() => {
         if (newScan) {
@@ -31,21 +53,49 @@ export default function ScanEngine({ route, navigation }) {
     }, [newScan]);
 
     const handleScanned = (result) => {
-        console.log(eventCode)
-        if (result != null) {
-            setScanResult(result.data);
-            verifyID(result.data);
-        } else if (eventCode != null) {
-            setScanResult(eventCode);
-            verifyID(eventCode);
-        }
+        console.log(result.data);
+        setEventCode(result.data);
+        CheckIn();
+
+
+
+        // if (result != null) {
+        //     setScanResult(result.data);
+        //     verifyID(result.data);
+        // } else if (eventCode != null) {
+        //     setScanResult(eventCode);
+        //     verifyID(eventCode);
+        // }
     };
+
+    const CheckIn = async () => {
+        console.log(eventCode);
+        setIsLoading(true);
+        try {
+            const response = await axios.post('https://ppevent.azurewebsites.net/api/checkin', {
+                eventid: currentEvent.id,
+                code: eventCode,
+                name: attendantName,
+                phonenumber: phoneNumber
+            });
+
+            setScanResults(response.data.message);
+            setScanCodeResults(response.data.code)
+            setShowResults(true);
+
+            setEventCode('');
+            setPhoneNumber('');
+            setAttendantName('');
+
+        } catch (error) {
+            console.log('Error:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     const verifyID = (ticketCode) => {
         //const foundEvent =[ EventsData.find(event => event.code === ticketCode)];
-        console.log('verifyID');
-        console.log(ticketCode);
-        console.log(currentEvent.eventcode);
 
         (currentEvent.eventcode === ticketCode) ? (
             setShowResults(true),
@@ -65,6 +115,21 @@ export default function ScanEngine({ route, navigation }) {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} >
+            {isLoading &&
+                <ActivityIndicator
+                    style={{
+                        flex: 1,
+                        marginTop: 10,
+                        position: "absolute",
+                        elevation: 0,
+                        backgroundColor: "#fff",
+                        opacity: 0.4,
+                        width: "100%",
+                        height: "100%",
+                        zIndex: 100
+                    }}
+                    size="large"
+                    color="#007A88" />}
             <View style={{ flex: 1, backgroundColor: "#fff" }}>
                 <ScrollView >
                     <View style={{ ...styles.container, flexDirection: 'row' }}>
@@ -104,26 +169,72 @@ export default function ScanEngine({ route, navigation }) {
                                 </View>
                                 :
                                 <View style={{ margin: 30, width: "80%", marginHorizontal: 40 }}>
-                                    <Text style={{ fontSize: 16, fontFamily: "Poppins-Medium" }}>Enter Event Code to verify</Text>
+                                    <Text style={{ fontSize: 16, fontFamily: "Poppins-Medium" }}>Enter Event Code to Check-In</Text>
 
                                     <View style={styles.textFieldWrapper}>
                                         <TextInput
                                             style={styles.textField}
-                                            placeholder="Enter Event Code"
+                                            placeholder="Enter Code"
                                             value={eventCode}
                                             onChangeText={setEventCode}
                                             autoCapitalize="characters"
                                         />
-                                        <TouchableOpacity style={{ position: "absolute", right: 5 }} onPress={() => { handleScanned() }}>
+                                        {/* <TouchableOpacity style={{ position: "absolute", right: 5 }} onPress={() => { handleScanned() }}>
                                             <Ionicons name="search-circle" size={56} color="#0095A6" />
-                                        </TouchableOpacity>
+                                        </TouchableOpacity> */}
                                     </View>
+
+                                    <Text style={{ fontSize: 22, fontFamily: "Poppins-Bold", alignSelf: 'center' }}>OR</Text>
+
+                                    <View style={styles.textFieldWrapper}>
+                                        <TextInput
+                                            style={styles.textField}
+                                            placeholder="Name"
+                                            value={attendantName}
+                                            onChangeText={setAttendantName}
+                                            autoCapitalize="characters"
+                                        />
+                                    </View>
+
+                                    <View style={styles.textFieldWrapper}>
+                                        <TextInput
+                                            style={styles.textField}
+                                            placeholder="Phone Number"
+                                            value={phoneNumber}
+                                            keyboardType='phone-pad'
+                                            onChangeText={setPhoneNumber}
+                                            autoCapitalize="characters"
+                                        />
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={{
+                                            backgroundColor: "#0095A6",
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            height: 50,
+                                            width: '100%',
+                                            borderRadius: 10,
+                                            marginVertical: 20,
+                                            opacity: 0.9,
+                                        }}
+                                        onPress={() => { CheckIn(), changeScanState(false) }}
+                                    >
+                                        <Text style={{
+                                            fontFamily: "Poppins-Bold",
+                                            color: "#fff",
+                                            fontSize: 18,
+                                            margin: 5
+                                        }}>
+                                            Check In
+                                        </Text>
+                                    </TouchableOpacity>
                                 </View>
                             }
                         </View>
-                        <View style={{ width: "50%" }}>
+                        <View style={{ width: "50%", marginTop: -30, }}>
                             <TouchableOpacity
-                                style={{ marginTop: 20, flexDirection: "column", alignItems: "flex-end", justifyContent: 'flex-start', margin: 30 }}
+                                style={{ marginTop: 20, flexDirection: "column", alignItems: "flex-end", justifyContent: 'flex-start', margin: 30, position: 'absolute', right: 0, top: 0 }}
                                 onPress={() => navigation.goBack()}
                             >
                                 <AntDesign name="close" size={28} color="#35536B" />
@@ -131,37 +242,29 @@ export default function ScanEngine({ route, navigation }) {
                             {
                                 (showResults) ? (
                                     <View style={{ flex: 1, alignItems: 'center', margin: 10 }} >
-                                        <Text style={{ fontSize: 20 }}> Event Code: <Text style={{ color: '#0095A6', fontSize: 24, fontFamily: "Poppins-Bold", }}>{foundEvent.eventcode}</Text></Text>
+                                        <Text style={{ fontSize: 20 }}> Event Code: <Text style={{ color: '#0095A6', fontSize: 24, fontFamily: "Poppins-Bold", }}>{currentEvent.eventcode}</Text></Text>
 
-                                        <Text style={{ color: '#000', fontSize: 26, fontFamily: "Poppins-Bold", }}>{foundEvent.title}</Text>
+                                        <Text style={{ color: '#000', fontSize: 26, fontFamily: "Poppins-Bold", }}>{currentEvent.title}</Text>
 
-
-                                        <TouchableOpacity
+                                        <LottieView
+                                            ref={statusLottie}
+                                            autoPlay={true}
+                                            loop={true}
                                             style={{
-                                                backgroundColor: "#15A259",
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                height: 50,
-                                                width: 100,
-                                                borderRadius: 10,
-                                                marginVertical: 20,
-                                                opacity: 0.9,
+                                                width: 200,
+                                                height: 200,
                                             }}
-                                            onPress={() => { navigation.navigate("CheckIn"), changeScanState(false) }}
-                                        >
-                                            <Text style={{
-                                                fontFamily: "Poppins-Medium",
-                                                color: "#fff",
-                                                fontSize: 16,
-                                                margin: 5
-                                            }}>
-                                                Check In
-                                            </Text>
-                                        </TouchableOpacity>
+                                            source={_sourceLoad(scanCodeesults)}
+                                        />
+
+                                        <Text style={{ color: '#000', fontSize: 28, fontFamily: "Poppins-Bold", }}>{scanResults}</Text>
+
+
+
                                     </View>
                                 ) : null
                             }
-                            {
+                            {/* {
                                 (noFoundEvent) ? (
                                     <View style={{
                                         display: "flex",
@@ -185,7 +288,7 @@ export default function ScanEngine({ route, navigation }) {
                                     </View>
                                 ) : null
 
-                            }
+                            } */}
                         </View>
                     </View>
                 </ScrollView>
@@ -219,5 +322,18 @@ const styles = StyleSheet.create({
         width: "100%",
         fontFamily: "Poppins-Regular",
         fontSize: 16
+    },
+    input: {
+        height: 40,
+        borderColor: 'green',  // Green border color
+        borderWidth: 1,
+        borderRadius: 5,
+        marginBottom: 10,
+        paddingHorizontal: 10,
+    },
+    phoneInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
     },
 })
