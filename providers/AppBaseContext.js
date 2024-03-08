@@ -9,6 +9,8 @@ export const AppBaseProvider = ({ children }) => {
     const [currentEvent, setCurrentEvent] = useState();
     const [newScan, setNewScan] = useState(false);
     const [eventCode, setEventCode] = useState();
+
+    const [onlineMode, setOnlineMode] = useState(true);
     // useEffect(() => {
     //     const unsubscribe = NetInfo.addEventListener(state => {
     //         setIsConnected(state.isConnected);
@@ -28,31 +30,42 @@ export const AppBaseProvider = ({ children }) => {
         setEventCode(code);
     }
 
+    const changeOnlineMode = (status) => {
+        setOnlineMode(status);
+    }
+
+    const storeData = async (value, storageNme) => {
+        try {
+            const jsonValue = JSON.stringify(value);
+            await AsyncStorage.setItem(storageNme, "");
+            await AsyncStorage.setItem(storageNme, jsonValue);
+        } catch (e) {
+            // saving error
+        }
+    };
+
+    const getData = async (storageNme) => {
+        try {
+            const jsonValue = await AsyncStorage.getItem(storageNme);
+
+            console.log('provider: ' + JSON.parse(jsonValue).length)
+
+            return jsonValue != null ? JSON.parse(jsonValue) : null;
+        } catch (e) {
+            // error reading value
+        }
+    };
+
     return (
-        <AppBaseContext.Provider value={{ isAuthenticated, setIsAuthenticated, currentEvent, setCurrentEvent, newScan, changeScanState, eventCode, changeCurrentEvent }}>
+        <AppBaseContext.Provider value={{ isAuthenticated, setIsAuthenticated, currentEvent, setCurrentEvent, newScan, changeScanState, eventCode, changeCurrentEvent, onlineMode, setOnlineMode, changeOnlineMode, storeData, getData }}>
+
             {children}
         </AppBaseContext.Provider>
     );
 };
 
 
-const storeData = async (value, storageNme = "currentEvent") => {
-    try {
-        const jsonValue = JSON.stringify(value);
-        await AsyncStorage.setItem(storageNme, jsonValue);
-    } catch (e) {
-        // saving error
-    }
-};
 
-const getData = async () => {
-    try {
-        const jsonValue = await AsyncStorage.getItem('currentEvent');
-        return jsonValue != null ? JSON.parse(jsonValue) : null;
-    } catch (e) {
-        // error reading value
-    }
-};
 
 
 export const useAppBase = () => {

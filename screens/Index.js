@@ -5,9 +5,10 @@ import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useAppBase } from "../providers/AppBaseContext";
+import LottieView from "lottie-react-native";
 
 export default function Index({ navigation }) {
-    const { isAuthenticated, setIsAuthenticated, currentEvent, setCurrentEvent } = useAppBase();
+    const { onlineMode, isAuthenticated, setIsAuthenticated, currentEvent, setCurrentEvent } = useAppBase();
 
     const Logout = () => {
         setIsAuthenticated(false);
@@ -27,18 +28,16 @@ export default function Index({ navigation }) {
                         resizeMode="stretch">
                     </Image>
 
-                    <View style={{ width: "50%", padding: 20, height: Dimensions.get('window').height }}>
+                    <View style={{ width: "50%", padding: 20, height: Dimensions.get('window').height, }}>
                         <ScrollView showsVerticalScrollIndicator={false}>
                             <Image
                                 source={require('../assets/logo.png')}
-                                style={{ alignSelf: "center", width: "50%", height: 80 }}
+                                style={{ alignSelf: "center", width: "40%", height: 80 }}
                                 resizeMode="contain"
                             ></Image>
                             <View style={styles.container}>
-                                <View>
-                                    <Text style={{ fontSize: 24, fontFamily: "Poppins-Bold", color: "#000", alignSelf: "center" }}>{currentEvent.title}</Text>
-                                    <Text style={{ fontSize: 24, fontFamily: "Poppins-Bold", color: "#000", alignSelf: "center" }}>({currentEvent.eventcode})</Text>
-                                </View>
+                                <Text style={{ fontSize: 28, fontFamily: "Poppins-Bold", color: "#000", alignSelf: "center" }}>{currentEvent.title}</Text>
+                                {/* <Text style={{ fontSize: 24, fontFamily: "Poppins-Bold", color: "#000", alignSelf: "center" }}>({currentEvent.eventcode})</Text> */}
                                 <View style={{ flexDirection: "column", justifyContent: "space-around", width: "100%", gap: 10, alignItems: "center" }}>
                                     <TouchableOpacity
                                         style={{
@@ -82,11 +81,36 @@ export default function Index({ navigation }) {
 
                                 </View>
                             </View>
+                            <TouchableOpacity
+                                style={{ position: "absolute", right: 0, bottom: 0, top: 0 }}
+                                onPress={() => { navigation.navigate("AdminScreen") }}
+                            >
+                                <LottieView
+                                    autoPlay={true}
+                                    loop={true}
+                                    style={{
+                                        width: 100,
+                                        height: 100,
+                                    }}
+                                    source={require('../assets/settings.json')}
+                                />
+                            </TouchableOpacity>
+
                         </ScrollView>
                     </View>
                 </View>
             </View>
             <StatusBar style="dark" />
+            {
+                (onlineMode) ?
+                    <View style={{ backgroundColor: "green", position: "absolute", zIndex: 1000, width: "100%", height: 20, bottom: 0, alignItems: "center" }}>
+                        <Text style={{ color: "#fff" }}>Online</Text>
+                    </View>
+                    :
+                    <View style={{ backgroundColor: "red", position: "absolute", zIndex: 1000, width: "100%", height: 20, bottom: 0, alignItems: "center" }}>
+                        <Text style={{ color: "#fff" }}>Offline</Text>
+                    </View>
+            }
         </SafeAreaView>
 
     );
@@ -128,11 +152,9 @@ const styles = StyleSheet.create({
         }),
     },
     container: {
-        flex: 1,
         backgroundColor: '#fff',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 40
+        gap: 40,
+        marginTop: 30,
     },
     actionButtton: {
         width: "70%",
@@ -141,7 +163,8 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         flexDirection: "row",
         padding: 20,
-        gap: 10
+        gap: 10,
+
 
     }
 });

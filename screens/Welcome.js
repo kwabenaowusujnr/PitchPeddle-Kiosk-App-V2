@@ -21,7 +21,7 @@ export default function Welcome({ navigation }) {
 
         try {
             const response = await axios.post('https://ppevent.azurewebsites.net/api/geteventbycode', {
-                eventcode: eventCode
+                eventcode: eventCode.toUpperCase()
             });
 
             if (response.data.event != null) {
@@ -41,8 +41,6 @@ export default function Welcome({ navigation }) {
             setIsLoading(false); // Set loading to false regardless of success or failure
         }
     }
-
-
 
     return (
 

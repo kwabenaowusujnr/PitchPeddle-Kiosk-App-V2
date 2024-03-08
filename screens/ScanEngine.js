@@ -1,19 +1,17 @@
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import React, { useEffect, useRef, useState } from 'react'
-
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import LottieView from 'lottie-react-native';
-
 import Toggle from "react-native-toggle-element";
 import { AntDesign, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useAppBase } from '../providers/AppBaseContext';
 import Scanner from '../components/Scanner.';
 import PhoneNumberValidator from '../components/PhoneNumberValidator';
 import axios from 'axios';
+import { doCheckin } from '../providers/api';
 
 export default function ScanEngine({ route, navigation }) {
-    const { isAuthenticated, setIsAuthenticated, currentEvent, setCurrentEvent } = useAppBase();
+    const { isAuthenticated, setIsAuthenticated, currentEvent, setCurrentEvent, onlineMode, getData, storeData } = useAppBase();
 
     const { newScan, changeScanState } = useAppBase();
     const [scanResult, setScanResult] = useState(null);
@@ -56,36 +54,84 @@ export default function ScanEngine({ route, navigation }) {
         console.log(result.data);
         setEventCode(result.data);
         CheckIn();
-
-
-
-        // if (result != null) {
-        //     setScanResult(result.data);
-        //     verifyID(result.data);
-        // } else if (eventCode != null) {
-        //     setScanResult(eventCode);
-        //     verifyID(eventCode);
-        // }
     };
 
     const CheckIn = async () => {
         console.log(eventCode);
         setIsLoading(true);
         try {
-            const response = await axios.post('https://ppevent.azurewebsites.net/api/checkin', {
-                eventid: currentEvent.id,
-                code: eventCode,
-                name: attendantName,
-                phonenumber: phoneNumber
-            });
 
-            setScanResults(response.data.message);
-            setScanCodeResults(response.data.code)
-            setShowResults(true);
+            if (onlineMode) {
+                const response = await doCheckin(currentEvent.id, eventCode.toUpperCase(), attendantName, phoneNumber);
 
-            setEventCode('');
-            setPhoneNumber('');
-            setAttendantName('');
+                setScanResults(response.message);
+                setScanCodeResults(response.code)
+                setShowResults(true);
+                setEventCode('');
+                setPhoneNumber('');
+                setAttendantName('');
+
+            } else {
+                console.log("system is offline");
+                var localData = await getData("downloadData");
+
+                if (toggleValue) {
+
+                    const foundDetails = localData.find(x => x.phone === phoneNumber);
+
+                    if (foundDetails !== undefined) {
+                        setScanResults("Already Checked In");
+                        setScanCodeResults(1)
+                        setShowResults(true);
+                    } else {
+                        localData.push({
+                            "name": attendantName,
+                            "phone": phoneNumber,
+                            "code": null,
+                            "seat": null,
+                            "checkin": true,
+                            "eventid": currentEvent.id
+                        })
+                        storeData(localData, "downloadData");
+
+                        setScanResults("Checked In");
+                        setScanCodeResults(0)
+                        setShowResults(true);
+
+                        setEventCode('');
+                        setPhoneNumber('');
+                        setAttendantName('');
+                    }
+                } else {
+                    const foundDetails = localData.find(x => x.eventCode.toUpperCase() === eventCode.toUpperCase());
+
+                    if (foundDetails !== undefined) {
+                        setScanResults("Already Checked In");
+                        setScanCodeResults(1)
+                        setShowResults(true);
+                    } else {
+                        localData.push({
+                            "name": null,
+                            "phone": null,
+                            "code": eventCode.toUpperCase(),
+                            "seat": null,
+                            "checkin": true,
+                            "eventid": currentEvent.id
+                        })
+                        storeData(localData, "downloadData");
+
+                        setScanResults("Checked In");
+                        setScanCodeResults(0)
+                        setShowResults(true);
+
+                        setEventCode('');
+                        setPhoneNumber('');
+                        setAttendantName('');
+                    }
+                }
+            }
+
+
 
         } catch (error) {
             console.log('Error:', error);
@@ -142,7 +188,7 @@ export default function ScanEngine({ route, navigation }) {
 
                             <Toggle
                                 value={toggleValue}
-                                onPress={() => setToggleValue(!toggleValue)}
+                                onPress={() => { setToggleValue(!toggleValue), setShowResults(false) }}
                                 leftTitle="Scan Code"
                                 rightTitle="Manual Checkin"
                                 trackBar={{
@@ -162,7 +208,7 @@ export default function ScanEngine({ route, navigation }) {
                             {(!toggleValue) ?
                                 <View>
                                     <View style={{ alignItems: 'center', marginTop: 2 }}>
-                                        <Text style={styles.header}><Text style={{ color: '#0095A6' }}>Scan</Text> Ticket</Text>
+                                        <Text style={styles.header}><Text style={{ color: '#0095A6' }}>Scan</Text> QR Code</Text>
                                         <Text style={{ fontSize: 18 }}>Place QR to frame to scan</Text>
                                     </View>
                                     <Scanner onScanned={handleScanned} scanMode={getScanState} />
@@ -242,9 +288,9 @@ export default function ScanEngine({ route, navigation }) {
                             {
                                 (showResults) ? (
                                     <View style={{ flex: 1, alignItems: 'center', margin: 10 }} >
-                                        <Text style={{ fontSize: 20 }}> Event Code: <Text style={{ color: '#0095A6', fontSize: 24, fontFamily: "Poppins-Bold", }}>{currentEvent.eventcode}</Text></Text>
+                                        {/* <Text style={{ fontSize: 20 }}> Event Code: <Text style={{ color: '#0095A6', fontSize: 24, fontFamily: "Poppins-Bold", }}>{currentEvent.eventcode}</Text></Text> */}
 
-                                        <Text style={{ color: '#000', fontSize: 26, fontFamily: "Poppins-Bold", }}>{currentEvent.title}</Text>
+                                        <Text style={{ color: '#0095A6', fontSize: 30, fontFamily: "Poppins-Bold", }}>{currentEvent.title}</Text>
 
                                         <LottieView
                                             ref={statusLottie}
@@ -293,6 +339,17 @@ export default function ScanEngine({ route, navigation }) {
                     </View>
                 </ScrollView>
             </View>
+            {
+                (onlineMode) ?
+                    <View style={{ backgroundColor: "green", position: "absolute", zIndex: 1000, width: "100%", height: 20, bottom: 0, alignItems: "center" }}>
+                        <Text style={{ color: "#fff" }}>Online</Text>
+                    </View>
+                    :
+                    <View style={{ backgroundColor: "red", position: "absolute", zIndex: 1000, width: "100%", height: 20, bottom: 0, alignItems: "center" }}>
+                        <Text style={{ color: "#fff" }}>Offline</Text>
+                    </View>
+
+            }
         </SafeAreaView >
     );
 }
@@ -304,7 +361,7 @@ const styles = StyleSheet.create({
     },
     header: {
         fontFamily: "Poppins-Bold",
-        fontSize: 42
+        fontSize: 36
     },
     textFieldWrapper: {
         width: "100%",
